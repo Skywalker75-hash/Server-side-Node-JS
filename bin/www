@@ -1,0 +1,84 @@
+#!/usr/bin/env node
+
+/**
+ * 模块依赖。
+ */
+var app = require('../app');
+var debug = require('debug')('你的应用名称:server');
+var http = require('http'); // 使用 http 模块替代 https 模块
+var path = require('path');
+
+/**
+ * 将端口规范化为数字、字符串或 false。
+ */
+function normalizePort(val) {
+  var port = parseInt(val, 10);
+
+  if (isNaN(port)) {
+    // 命名管道
+    return val;
+  }
+
+  if (port >= 0) {
+    // 端口号
+    return port;
+  }
+
+  return false;
+}
+
+/**
+ * 从环境中获取端口并存储在 Express 中。
+ */
+var port = normalizePort(process.env.PORT || '3000');
+app.set('port', port);
+
+/**
+ * 创建 HTTP 服务器。
+ */
+var server = http.createServer(app);
+
+/**
+ * HTTP 服务器“error”事件的事件监听器。
+ */
+function onError(error) {
+  if (error.syscall !== 'listen') {
+    throw error;
+  }
+
+  var bind = typeof port === 'string'
+      ? '管道 ' + port
+      : '端口 ' + port;
+
+  // 使用友好消息处理特定的监听错误
+  switch (error.code) {
+    case 'EACCES':
+      console.error(bind + ' 需要更高的权限');
+      process.exit(1);
+      break;
+    case 'EADDRINUSE':
+      console.error(bind + ' 已经被使用');
+      process.exit(1);
+      break;
+    default:
+      throw error;
+  }
+}
+
+/**
+ * HTTP 服务器“listening”事件的事件监听器。
+ */
+function onListening() {
+  var addr = server.address();
+  var bind = typeof addr === 'string'
+      ? '管道 ' + addr
+      : '端口 ' + addr.port;
+  console.log(`服务器已开启，并且监听${bind}`); // 输出服务器已开启的信息
+}
+
+/**
+ * 在提供的端口上监听，对所有网络接口生效。
+ */
+server.listen(port);
+server.on('error', onError);
+server.on('listening', onListening);
