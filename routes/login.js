@@ -12,11 +12,11 @@ router.post('/', function(req, res) {
   pool.query('SELECT * FROM user WHERE userName = ?', [username], function(error, results) {
     if (error) {
       //数据库查询出错
-      return res.status(500).json({success: false, message: 'Server error'});
+      return res.status(500).json({success: false, message: '服务错误'});
     }
     if (results.length === 0) {
       //用户名不存在
-      return res.status(401).json({success: false, message: 'Authentication failed'});
+      return res.status(401).json({success: false, message: '用户名不存在'});
     }
 
     const user = results[0];
@@ -25,14 +25,14 @@ router.post('/', function(req, res) {
     bcrypt.compare(password, user.userPwd, function(err, result) {
       if (err) {
         //发生错误
-        return res.status(500).json({success: false, message: 'Server error during password comparison'});
+        return res.status(500).json({success: false, message: '密码比较时发生错误'});
       }
       if (result) {
         //密码匹配，登录成功
-        res.json({success: true, message: "Login successful"});
+        res.json({success: true, message: "登陆成功"});
       } else {
         //密码不匹配，登录失败
-        res.status(401).json({success: false, message: 'Authentication failed'});
+        res.status(401).json({success: false, message: '密码错误'});
       }
     });
   });

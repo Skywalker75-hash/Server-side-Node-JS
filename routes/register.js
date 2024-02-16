@@ -11,14 +11,14 @@ router.post('/', async function(req, res) {
 
     //检查用户名和密码是否被提供
     if (!username || !password) {
-        return res.status(400).json({ success: false, message: 'Username and password are required' });
+        return res.status(400).json({ success: false, message: '未提供完整的用户名和密码' });
     }
 
     try {
         //检查用户名是否已存在
         const checkUserExist = await pool.query('SELECT * FROM user WHERE userName = ?', [username]);
         if (checkUserExist.length > 0) {
-            return res.status(409).json({ success: false, message: 'Username already exists' });
+            return res.status(409).json({ success: false, message: '用户已存在' });
         }
 
         //加密密码
@@ -28,10 +28,10 @@ router.post('/', async function(req, res) {
         //将新用户插入数据库
         await pool.query('INSERT INTO user (userName, userPwd) VALUES (?, ?)', [username, hashedPassword]);
 
-        res.status(201).json({ success: true, message: 'User registered successfully' });
+        res.status(201).json({ success: true, message: '注册成功' });
     } catch (error) {
         console.error('Register Error:', error);
-        res.status(500).json({ success: false, message: 'Server error' });
+        res.status(500).json({ success: false, message: '注册失败，服务出错' });
     }
 });
 
