@@ -1,6 +1,6 @@
 var express = require('express');
 var router = express.Router();
-var pool = require('./dbPool'); // 使用同一个数据库连接池
+var pool = require('../dbPool'); // 使用同一个数据库连接池
 
 // 校园卡解挂
 router.post('/', function(req, res) {

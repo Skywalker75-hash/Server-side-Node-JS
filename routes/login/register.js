@@ -1,7 +1,7 @@
 var express = require('express');
 var router = express.Router();
 var bcrypt = require('bcrypt');
-var pool = require('./dbPool'); // 使用同一个数据库连接池
+var pool = require('../dbPool'); // 使用同一个数据库连接池
 
 // 注册新用户
 router.post('/', async function(req, res) {
