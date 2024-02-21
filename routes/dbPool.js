@@ -1,5 +1,4 @@
-
-// dbPool.js
+//数据库连接池
 var mysql = require('mysql');
 var pool = mysql.createPool({
     connectionLimit: 10, // 连接池允许的最大连接数

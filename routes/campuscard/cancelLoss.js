@@ -1,38 +1,37 @@
 var express = require('express');
 var router = express.Router();
-var pool = require('../dbPool'); // 使用同一个数据库连接池
+var pool = require('../dbPool');
 
-// 校园卡解挂
+//校园卡解挂
 router.post('/', function(req, res) {
     const { userName } = req.body; // 通过请求体传递userName
     console.log(userName);
-
-    // 检查用户名是否被提供
+    // 检查信息是否完整
     if (!userName) {
-        return res.status(400).json({ success: false, message: '未提供用户名' });
+        return res.status(400).json({ success: false, message: '请提供完整信息' });
     }
-
-    // 首先，检查与该用户名关联的校园卡是否存在
+    //查询校园卡是否存在
     pool.query('SELECT campuscards.cardNumber, campuscards.lostStatus FROM campuscards JOIN user ON campuscards.userID = user.userID WHERE user.userName = ?', [userName], async function(error, results) {
         if (error) {
-            return res.status(500).json({ success: false, message: '服务错误' });
+            return res.status(500).json({ success: false, message: '查询campuscards表错误' });
         }
         if (results.length === 0) {
-            return res.status(404).json({ success: false, message: '未找到与该用户名关联的校园卡账户' });
+            return res.status(404).json({ success: false, message: '未找到校园卡' });
         }
 
-        // 检查校园卡是否已经解挂
+        //消炎卡没挂失
         if (results[0].lostStatus === 0) {
-            return res.status(409).json({ success: false, message: '校园卡未挂失，无需解挂' });
+            return res.status(409).json({ success: false, message: '校园卡未挂失' });
         }
-
-        // 更新校园卡的挂失状态为0（解挂）
-        pool.query('UPDATE campuscards JOIN user ON campuscards.userID = user.userID SET campuscards.lostStatus = 0 WHERE user.userName = ?', [userName], function(updateError) {
-            if (updateError) {
-                return res.status(500).json({ success: false, message: '解挂失败，服务出错' });
-            }
-            res.json({ success: true, message: '解挂成功' });
-        });
+        else {
+            //挂失校园卡
+            pool.query('UPDATE campuscards JOIN user ON campuscards.userID = user.userID SET campuscards.lostStatus = 0 WHERE user.userName = ?', [userName], function (updateError) {
+                if (updateError) {
+                    return res.status(500).json({success: false, message: '解挂失败，服务出错'});
+                }
+                res.json({success: true, message: '解挂成功'});
+            });
+        }
     });
 });
 
