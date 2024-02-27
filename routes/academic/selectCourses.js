@@ -108,5 +108,3 @@ function checkTimeConflict(classTime1, classTime2) {
     return false; // 不存在冲突
 }
 
-
-

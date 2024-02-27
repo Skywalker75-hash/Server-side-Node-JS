@@ -18,6 +18,9 @@ var rechargeCardRouter = require('./routes/campuscard/rechargeCard');//充值校
 
 var getCoursesRouter =  require('./routes/academic/getCourses');//获取课程信息
 var selectCoursesRouter = require('./routes/academic/selectCourses');//选课
+var showSelectedCoursesRouter = require('./routes/academic/showSelectedCourses');//展示已选课程
+
+var classScheduleRouter = require('./routes/classschedule/classSchedule');//课程表
 
 // 视图引擎设置
 app.set('views', path.join(__dirname, 'views')); // 设置视图文件的目录
@@ -41,6 +44,8 @@ app.use('/cancelLoss',cancelLossRouter);
 app.use('/rechargeCard',rechargeCardRouter);
 app.use('/getCourses',getCoursesRouter);
 app.use('/selectCourses',selectCoursesRouter);
+app.use('/showSelectedCourses',showSelectedCoursesRouter);
+app.use('/classSchedule',classScheduleRouter);
 
 // 捕获 404 错误并转发到错误处理器
 app.use(function(req, res, next) {
