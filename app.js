@@ -17,10 +17,16 @@ var cancelLossRouter = require('./routes/campuscard/cancelLoss');//解挂校园�
 var rechargeCardRouter = require('./routes/campuscard/rechargeCard');//充值校园卡
 
 var getCoursesRouter =  require('./routes/academic/getCourses');//获取课程信息
+var showSchoolCoursesRouter = require('./routes/academic/showSchoolCourses');//获取特定学院课程
 var selectCoursesRouter = require('./routes/academic/selectCourses');//选课
 var showSelectedCoursesRouter = require('./routes/academic/showSelectedCourses');//展示已选课程
 
 var classScheduleRouter = require('./routes/classschedule/classSchedule');//课程表
+
+var releaseThingsRouter = require('./routes/market/releaseThings');//上传发布物品信息
+var showThingsRouter = require('./routes/market/showThings');//展示数据库中物品信息
+var interactionsRouter = require('./routes/market/interactions');//记录用户对物品的点击次数
+
 
 // 视图引擎设置
 app.set('views', path.join(__dirname, 'views')); // 设置视图文件的目录
@@ -46,7 +52,15 @@ app.use('/getCourses',getCoursesRouter);
 app.use('/selectCourses',selectCoursesRouter);
 app.use('/showSelectedCourses',showSelectedCoursesRouter);
 app.use('/classSchedule',classScheduleRouter);
+app.use('/showSchoolCourses',showSchoolCoursesRouter);
+app.use('/releaseThings',releaseThingsRouter);
+app.use('/showThings',showThingsRouter);
+app.use('/interactions',interactionsRouter);
 
+//路径不正确报错：
+app.use(function(req, res, next) {
+  res.status(404).send('Sorry cant find that!');
+});
 // 捕获 404 错误并转发到错误处理器
 app.use(function(req, res, next) {
   next(createError(404));
