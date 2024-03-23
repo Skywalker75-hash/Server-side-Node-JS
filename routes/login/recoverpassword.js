@@ -3,24 +3,24 @@ var router = express.Router();
 var bcrypt = require('bcrypt');
 var pool = require('../dbPool');
 
-// 重置密码
+//重置密码
 router.post('/', function(req, res) {
     const { username, newPassword } = req.body;
     console.log(username);
     console.log(newPassword);
 
-    // 从数据库查询用户信息以确认用户名存在
+    //从数据库查询用户信息以确认用户名存在
     pool.query('SELECT * FROM user WHERE userName = ?', [username], function(error, results) {
         if (error) {
-            // 数据库查询出错
+            //数据库查询出错
             return res.status(500).json({success: false, message: '查询user表错误'});
         }
         if (results.length === 0) {
-            // 用户名不存在
+            //用户名不存在
             return res.status(401).json({success: false, message: '用户名不存在'});
         }
 
-        // 用户名存在，加密新密码
+        //用户名存在，加密新密码
         bcrypt.hash(newPassword, 10, function(hashError, hashedPassword) {
             if (hashError) {
                 return res.status(500).json({success: false, message: '密码加密出错'});
@@ -32,7 +32,7 @@ router.post('/', function(req, res) {
                         // 更新数据库出错
                         return res.status(500).json({success: false, message: '数据库更新出错'});
                     }
-                    // 密码更新成功
+                    //密码更新成功
                     res.json({success: true, message: "密码重置成功"});
                 });
             }

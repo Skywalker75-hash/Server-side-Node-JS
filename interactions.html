@@ -4,52 +4,15 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Item Click Record Test</title>
+    <title>Send Data Without JS</title>
 </head>
 <body>
-<h2>Item Click Record Form</h2>
+<h2>Send Data to Server Without JavaScript</h2>
 
-<!-- 这里模拟的是商品列表 -->
-<div id="itemList">
-    <div>
-        <span>Item 1</span>
-        <button onclick="recordClick(1)">Record Click</button>
-    </div>
-    <div>
-        <span>Item 2</span>
-        <button onclick="recordClick(2)">Record Click</button>
-    </div>
-    <div>
-        <span>Item 3</span>
-        <button onclick="recordClick(3)">Record Click</button>
-    </div>
-</div>
-
-<script>
-    function recordClick(itemId) {
-        // 此处填写您的userID，实际应用中应从用户状态或数据库中获取
-        const userID = 9; // 示例userID
-
-        // 发起POST请求记录点击
-        fetch('http://localhost:3000/interactions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userID: userID,
-                itemID: itemId,
-            }),
-        })
-            .then(response => response.json())
-            .then(data => {
-                console.log('Success:', data);
-                alert(`Click recorded for item ${itemId}`);
-            })
-            .catch((error) => {
-                console.error('Error:', error);
-            });
-    }
-</script>
+<form action="http://localhost:3000/interactions" method="post">
+    <input type="hidden" name="username" value="zzx">
+    <input type="hidden" name="itemID" value="3">
+    <input type="submit" value="Send Data">
+</form>
 </body>
 </html>

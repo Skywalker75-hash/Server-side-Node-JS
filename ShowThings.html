@@ -10,6 +10,9 @@
 <h2>Test Form for Pagination Load Items</h2>
 <!-- 注意这里的action地址可能需要根据你的实际路由地址进行调整 -->
 <form method="POST" action="http://localhost:3000/showThings">
+  <label for="username">Username:</label>
+  <input type="text" id="username" name="username" required>
+  <br>
   <label for="page">Page:</label>
   <input type="number" id="page" name="page" min="1" value="1" required>
   <br>

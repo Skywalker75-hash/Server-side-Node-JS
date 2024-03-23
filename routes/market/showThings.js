@@ -1,51 +1,122 @@
-var express = require('express');
-var router = express.Router();
-var pool = require('../dbPool');
+const express = require('express');
+const router = express.Router();
+const pool = require('../dbPool'); // 确保你已经设置了数据库连接池
 
-router.post('/', function(req, res) {
-    const { page, pageSize } = req.body;//page是第几页，pageSize是一页有几个数据项
+//计算两个向量之间的余弦相似度
+function cosineSimilarity(vec1, vec2) {
+    let dotProduct = 0, normA = 0, normB = 0;
+    for (let i = 0; i < vec1.length; i++) {
+        dotProduct += vec1[i] * vec2[i];
+        normA += Math.pow(vec1[i], 2);
+        normB += Math.pow(vec2[i], 2);
+    }
+    return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+}
 
-    const offset = (page - 1) * pageSize;//从哪里开始获取结果
+//从数据库中获取所有商品的点击次数作为特征向量
+function fetchItemVectors(callback) {
+    const query = 'SELECT itemID, SUM(ClickCount) AS totalClicks FROM UserItemInteractions GROUP BY itemID';
+    pool.query(query, function(error, results) {
+        if (error) {
+            return callback(error, null);
+        }
+        const itemVectors = {};
+        results.forEach(item => {
+            itemVectors[item.itemID] = [item.totalClicks];
+        });
+        callback(null, itemVectors);
+    });
+}
+// 根据用户的历史互动推荐商品
+function fetchRecommendedItems(username, page, pageSize, callback) {
+    console.log(username);
+    console.log(page);
+    console.log(pageSize);
+    pool.query('SELECT userID FROM user WHERE userName = ?', [username], function(error, userResults) {
+        if (error || userResults.length === 0) {
+            console.log(error);
+            return callback(new Error('找不到该用户'));
+        }
 
-    //修改查询语句，加入user表的连接，获取userName
-    pool.query(`
-        SELECT 
-            Items.ItemID, Items.ItemName, Items.userID, Items.Category, 
-            Items.Price, Items.Image, user.userName AS userName
-        FROM 
-            Items 
-        INNER JOIN 
-            user ON items.userID = user.userID
-        ORDER BY 
-            Items.ItemID DESC 
-        LIMIT ? OFFSET ?`,//LIMIT是获取数据项的数目，OFFSET是从哪里开始获取
-        [parseInt(pageSize), offset], function(error, results, fields) {
+        const userID = userResults[0].userID;
+
+        pool.query('SELECT itemID FROM UserItemInteractions WHERE userID = ? GROUP BY itemID ORDER BY COUNT(*) DESC LIMIT 1', [userID], function(error, results) {
             if (error) {
-                return res.status(500).json({ success: false, message: '查询Items表错误', error: error.message });
+                return callback(error);
             }
 
-            // 处理每个数据项，将图片的二进制数据转换为Base64字符串
-            const processedResults = results.map(item => {
-                let itemCopy = {...item};
+            if (results.length === 0) {
+                // 对于新用户，修改查询以联合User表获取userName
+                const queryForNewUser = 'SELECT Items.*, User.userName FROM Items JOIN User ON Items.userID = user.userID ORDER BY Items.ItemID DESC LIMIT ? OFFSET ?';
+                const offset = (page - 1) * pageSize;
+                pool.query(queryForNewUser, [parseInt(pageSize), offset], function(err, items) {
+                    if (err) {
+                        console.log(err);
+                        return callback(err);
+                    }
+                    return callback(null, items);
+                });
+            } else {
+                // 对于老用户，执行之前定义的推荐逻辑
+                const favoriteItemID = results[0].itemID;
+                fetchItemVectors(function(err, itemVectors) {
+                    if (err) {
+                        console.log(err);
+                        return callback(err);
+                    }
 
-                if (itemCopy.Image) {
-                    // 假设图片存储为Buffer对象（二进制数据）
-                    // 转换为Base64字符串
-                    itemCopy.Image = Buffer.from(itemCopy.Image).toString('base64');
-                    itemCopy.Image = `data:image/jpeg;base64,${itemCopy.Image}`; // 您可能需要根据实际图片格式调整MIME类型
-                }
+                    const favoriteVector = itemVectors[favoriteItemID];
+                    const similarities = Object.keys(itemVectors).map(itemID => ({
+                        itemID: itemID,
+                        similarity: cosineSimilarity(favoriteVector, itemVectors[itemID])
+                    })).sort((a, b) => b.similarity - a.similarity);
 
-                return itemCopy;
-            });
+                    const startIndex = (page - 1) * pageSize;
+                    const endIndex = startIndex + pageSize;
+                    const pagedItems = similarities.slice(startIndex, endIndex);
 
-            //返回json数据包
-            res.json({
-                success: true,
-                message: '分页加载物品及用户信息成功',
-                data: processedResults
-            });
+                    const itemIDs = pagedItems.map(item => parseInt(item.itemID));
+                    if (itemIDs.length === 0) {
+                        return callback(null, []);
+                    }
+
+                    const placeholders = itemIDs.map(() => '?').join(',');
+                    const itemDetailsQuery = `SELECT Items.*, User.userName FROM Items JOIN User ON Items.userID = user.userID WHERE Items.ItemID IN (${placeholders})`;
+                    pool.query(itemDetailsQuery, itemIDs, function(error, detailedItems) {
+                        if (error) {
+                            console.log(error);
+                            return callback(new Error('查询商品详细信息失败'));
+                        }
+                        callback(null, detailedItems);
+                    });
+                });
+            }
         });
+    });
+}
+
+
+router.post('/', function(req, res) {
+    const { username, page, pageSize } = req.body;
+
+    if (!username || page == null || pageSize == null) {
+        return res.status(400).json({ success: false, message: '缺少必要的参数' });
+    }
+
+    fetchRecommendedItems(username, parseInt(page), parseInt(pageSize), function(err, recommendedItems) {
+        if (err) {
+            return res.status(500).json({ success: false, message: err.message });
+        }
+
+        res.json({
+            success: true,
+            message: '获取推荐商品成功',
+            data: recommendedItems
+        });
+    });
 });
 
+
 module.exports = router;
+
 

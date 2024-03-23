@@ -24,8 +24,11 @@ var showSelectedCoursesRouter = require('./routes/academic/showSelectedCourses')
 var classScheduleRouter = require('./routes/classschedule/classSchedule');//课程表
 
 var releaseThingsRouter = require('./routes/market/releaseThings');//上传发布物品信息
+var removeThingsRouter = require('./routes/market/removeThings');//下架发布的物品
 var showThingsRouter = require('./routes/market/showThings');//展示数据库中物品信息
 var interactionsRouter = require('./routes/market/interactions');//记录用户对物品的点击次数
+var showuserThingsRouter = require('./routes/market/showuserThings');//展示自己发布的商品
+var buyThingsRouter = require('./routes/market/buyThings');//购买商品
 
 
 // 视图引擎设置
@@ -56,6 +59,9 @@ app.use('/showSchoolCourses',showSchoolCoursesRouter);
 app.use('/releaseThings',releaseThingsRouter);
 app.use('/showThings',showThingsRouter);
 app.use('/interactions',interactionsRouter);
+app.use('/removeThings',removeThingsRouter);
+app.use('/showuserThings',showuserThingsRouter);
+app.use('/buyThings',buyThingsRouter);
 
 //路径不正确报错：
 app.use(function(req, res, next) {
