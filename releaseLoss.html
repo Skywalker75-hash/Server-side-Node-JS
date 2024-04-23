@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Product Test</title>
+</head>
+<body>
+<h2>Product Upload Form</h2>
+<!-- 注意：为了上传文件，确保在form标签中设置enctype为multipart/form-data -->
+<form method="POST" action="http://localhost:3000/releaseLoss" enctype="multipart/form-data">
+    <label for="username">Username:</label>
+    <input type="text" id="username" name="username" required>
+    <br>
+    <label for="LossItemName">Item Name:</label>
+    <input type="text" id="LossItemName" name="LossItemName" required>
+    <br>
+
+    <label for="Image">Image:</label>
+    <input type="file" id="Image" name="Image"> <!-- 移除了required属性 -->
+    <br>
+    <input type="submit" value="Upload Product">
+</form>
+</body>
+</html>

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Get User Items</title>
+</head>
+<body>
+<h2>Test GetUserItems Route</h2>
+
+<!-- 注意：将action中的URL替换为您的服务器地址和相应的端点 -->
+<form action="http://localhost:3000/showuserLoss" method="post">
+    <label for="username">Username:</label>
+    <input type="text" id="username" name="username" placeholder="Enter Username"><br><br>
+
+    <label for="page">Page Number:</label>
+    <input type="number" id="page" name="page" value="1" min="1"><br><br>
+
+    <label for="pageSize">Page Size:</label>
+    <input type="number" id="pageSize" name="pageSize" value="10" min="1"><br><br>
+
+    <input type="submit" value="Get User Items">
+</form>
+
+</body>
+</html>

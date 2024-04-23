@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Update Phone Test</title>
+</head>
+<body>
+<h2>Update Phone Form</h2>
+<!-- 注意：为了发送数据，确保在form标签中设置正确的action路径 -->
+<form method="POST" action="http://localhost:3000/releasePhone" enctype="application/x-www-form-urlencoded">
+    <label for="LossItemID">Loss Item ID:</label>
+    <input type="text" id="LossItemID" name="LossItemID" required>
+    <br>
+    <label for="Phone">Phone:</label>
+    <input type="text" id="Phone" name="Phone" required>
+    <br>
+    <input type="submit" value="Update Phone">
+</form>
+</body>
+</html>

@@ -30,6 +30,11 @@ var interactionsRouter = require('./routes/market/interactions');//记录用户�
 var showuserThingsRouter = require('./routes/market/showuserThings');//展示自己发布的商品
 var buyThingsRouter = require('./routes/market/buyThings');//购买商品
 
+var declareLossRouter = require('./routes/declareloss/releaseLoss');//上传挂失物品
+var showLossRouter = require('./routes/declareloss/showLoss');//展示挂失物品
+var releasePhoneRouter = require('./routes/declareloss/releasePhone');//上传手机号
+var removeLossRouter = require('./routes/declareloss/removeLoss');//删除挂失
+var showuserLossRouter = require('./routes/declareloss/showuserLoss');//展示自己挂失的物品
 
 // 视图引擎设置
 app.set('views', path.join(__dirname, 'views')); // 设置视图文件的目录
@@ -62,6 +67,11 @@ app.use('/interactions',interactionsRouter);
 app.use('/removeThings',removeThingsRouter);
 app.use('/showuserThings',showuserThingsRouter);
 app.use('/buyThings',buyThingsRouter);
+app.use('/releaseLoss',declareLossRouter);
+app.use('/showLoss',showLossRouter);
+app.use('/releasePhone',releasePhoneRouter);
+app.use('/removeLoss',removeLossRouter);
+app.use('/showuserLoss',showuserLossRouter);
 
 //路径不正确报错：
 app.use(function(req, res, next) {

@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Delete Loss Item Test</title>
+</head>
+<body>
+<h2>Delete Loss Item</h2>
+
+<form action="http://localhost:3000/removeLoss" method="post">
+  <label for="username">Username:</label><br>
+  <input type="text" id="username" name="username" required><br><br>
+
+  <label for="LossItemID">Loss Item ID:</label>
+  <input type="text" id="LossItemID" name="LossItemID" required><br><br>
+  <input type="submit" value="Delete Loss Item">
+</form>
+
+</body>
+</html>
