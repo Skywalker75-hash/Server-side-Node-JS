@@ -11,6 +11,7 @@ var loginRouter = require('./routes/login/login');//登录
 var registerRouter = require('./routes/login/register');//注册
 var recoverpassRouter = require('./routes/login/recoverpassword');//重置密码
 
+var registercardRouter= require('./routes/campuscard/registercard');//注册校园卡
 var queryAccountRouter=require('./routes/campuscard/queryAccount');//查询校园卡
 var reportLostRouter = require('./routes/campuscard/reportLoss');//挂失校园卡
 var cancelLossRouter = require('./routes/campuscard/cancelLoss');//解挂校园卡
@@ -20,6 +21,7 @@ var getCoursesRouter =  require('./routes/academic/getCourses');//获取课程�
 var showSchoolCoursesRouter = require('./routes/academic/showSchoolCourses');//获取特定学院课程
 var selectCoursesRouter = require('./routes/academic/selectCourses');//选课
 var showSelectedCoursesRouter = require('./routes/academic/showSelectedCourses');//展示已选课程
+var deleteCourseRouter = require('.//routes/academic//deleteCourse');//删除已选课程
 
 var classScheduleRouter = require('./routes/classschedule/classSchedule');//课程表
 
@@ -72,6 +74,8 @@ app.use('/showLoss',showLossRouter);
 app.use('/releasePhone',releasePhoneRouter);
 app.use('/removeLoss',removeLossRouter);
 app.use('/showuserLoss',showuserLossRouter);
+app.use('/registercard',registercardRouter);
+app.use('/deleteCourse',deleteCourseRouter);
 
 //路径不正确报错：
 app.use(function(req, res, next) {

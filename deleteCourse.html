@@ -1,10 +1,21 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh">
 <head>
   <meta charset="UTF-8">
-  <title>$Title$</title>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>撤销选课表单</title>
 </head>
 <body>
-$END$
+<h2>撤销选课表单</h2>
+<form action="http://localhost:3000/deleteCourse" method="POST">
+  <label for="username">用户名:</label>
+  <input type="text" id="username" name="username" required>
+  <br>
+  <label for="courseCode">课程号:</label>
+  <input type="text" id="courseCode" name="courseCode" required>
+  <br>
+  <input type="submit" value="撤销选课">
+</form>
 </body>
 </html>

@@ -15,11 +15,25 @@
     <label for="password">Password:</label>
     <input type="password" id="password" name="password" required>
     <br>
-    <!-- Optionally, add a password confirmation field -->
     <label for="password-confirm">Confirm Password:</label>
     <input type="password" id="password-confirm" name="password-confirm" required>
     <br>
+    <label for="cardNumber">Card Number:</label>
+    <input type="text" id="cardNumber" name="cardNumber" required>
+    <br>
     <input type="submit" value="Register">
 </form>
+<script>
+    document.forms[0].onsubmit = function(e) {
+        var password = document.getElementById('password').value;
+        var confirmPassword = document.getElementById('password-confirm').value;
+        if (password !== confirmPassword) {
+            alert('Passwords do not match.');
+            e.preventDefault();  // Prevent form from submitting
+            return false;
+        }
+        return true;
+    };
+</script>
 </body>
 </html>

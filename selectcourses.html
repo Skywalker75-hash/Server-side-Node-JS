@@ -1,23 +1,28 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Campus Card Report Lost and Course Code</title>
-</head>
-<body>
-<h2>Campus Card Report Lost Form with Username and Course Code</h2>
-
-<form method="POST" action="http://localhost:3000/selectCourses">
+<form id="courseForm">
     <label for="userName">User Name:</label>
     <input type="text" id="userName" name="username" required>
     <br>
-    <label for="courseCode">Course Code:</label>
-    <input type="text" id="courseCode" name="courseCode" required>
+    <label for="courseCodes">Course Codes (separate with commas):</label>
+    <input type="text" id="courseCodes" name="courseCodes" placeholder="E.g., CSC101, MTH202, PHY203" required>
     <br>
-    <input type="submit" value="Report Lost with Course Code">
+    <button type="button" onclick="submitForm()">Submit Courses</button>
 </form>
 
-</body>
-</html>
+<script>
+    function submitForm() {
+        const username = document.getElementById('userName').value;
+        const courseCodesInput = document.getElementById('courseCodes').value;
+        const courseCodes = courseCodesInput.split(',').map(code => code.trim());
+
+        fetch('http://localhost:3000/selectCourses', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ username, courseCodes })
+        })
+            .then(response => response.json())
+            .then(data => alert(JSON.stringify(data)))
+            .catch(error => console.error('Error:', error));
+    }
+</script>

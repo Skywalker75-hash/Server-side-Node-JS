@@ -7,7 +7,7 @@ router.post('/', function(req, res) {
   const { username, password } = req.body;
   console.log(username);
   console.log(password);
-// 检查信息是否完整
+//检查信息是否完整
   if (!username||!password) {
     return res.status(400).json({ success: false, message: '请提供完整信息' });
   }
