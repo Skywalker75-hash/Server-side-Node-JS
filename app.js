@@ -1,10 +1,22 @@
-var createError = require('http-errors');
-var express = require('express');
-var path = require('path');
-var cookieParser = require('cookie-parser');
-var logger = require('morgan');
+const createError = require('http-errors');
+const express = require('express');
+const path = require('path');
+const cookieParser = require('cookie-parser');
+const logger = require('morgan');
+const { scheduleSimilarityCalculation } = require('./routes/market/similarityCalculator'); // 确保这个路径与你的文件结构相匹配
 
-var app = express(); // 创建 Express 应用实例
+const app = express();
+
+// 视图引擎设置
+app.set('views', path.join(__dirname, 'views'));
+app.set('view engine', 'ejs');
+
+// 中间件
+app.use(logger('dev'));
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
+app.use(express.static(path.join(__dirname, 'public')));
 
 // 路由配置：每一个URL路径配置一条语句
 var loginRouter = require('./routes/login/login');//登录
@@ -38,18 +50,6 @@ var releasePhoneRouter = require('./routes/declareloss/releasePhone');//上传�
 var removeLossRouter = require('./routes/declareloss/removeLoss');//删除挂失
 var showuserLossRouter = require('./routes/declareloss/showuserLoss');//展示自己挂失的物品
 
-// 视图引擎设置
-app.set('views', path.join(__dirname, 'views')); // 设置视图文件的目录
-app.set('view engine', 'ejs'); // 设置视图模板引擎为 ejs
-
-// 使用各种中间件
-app.use(express.static('public'));
-app.use(logger('dev')); // 使用 morgan 日志中间件以 'dev' 格式记录日志
-app.use(express.json()); // 解析 JSON 格式的请求体数据
-app.use(express.urlencoded({ extended: false })); // 解析 URL-encoded 格式的请求体数据
-app.use(cookieParser()); // 解析 Cookie
-app.use(express.static(path.join(__dirname, 'public'))); // 设置静态文件目录
-
 // 使用路由中间件，为应用定义路由
 app.use('/login', loginRouter);
 app.use('/register',registerRouter);
@@ -77,24 +77,27 @@ app.use('/showuserLoss',showuserLossRouter);
 app.use('/registercard',registercardRouter);
 app.use('/deleteCourse',deleteCourseRouter);
 
-//路径不正确报错：
-app.use(function(req, res, next) {
-  res.status(404).send('Sorry cant find that!');
-});
-// 捕获 404 错误并转发到错误处理器
+
+
+// 错误处理
 app.use(function(req, res, next) {
   next(createError(404));
 });
 
-// 错误处理器
 app.use(function(err, req, res, next) {
-  // 设置局部变量，仅在开发环境中提供错误信息
   res.locals.message = err.message;
   res.locals.error = req.app.get('env') === 'development' ? err : {};
-
-  // 渲染错误页面
   res.status(err.status || 500);
   res.render('error');
 });
-//
-module.exports = app; // 导出 app 实例，以便可以在其他文件（如bin/www）中使用
+
+// 定时任务
+scheduleSimilarityCalculation();
+
+// 服务器启动
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
+
+module.exports = app;

@@ -1,0 +1,88 @@
+const schedule = require('node-schedule');
+const pool = require('../dbPool');  // 假设这是你的数据库连接池模块
+
+function cosineSimilarity(vec1, vec2) {
+    let dotProduct = 0, normA = 0, normB = 0;
+    for (let i = 0; i < vec1.length; i++) {
+        dotProduct += vec1[i] * vec2[i];
+        normA += vec1[i] * vec1[i];
+        normB += vec2[i] * vec2[i];
+    }
+    // 防止除以零的情况发生，引起 NaN
+    if (normA === 0 || normB === 0) return 0;
+    return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+}
+
+//获取商品的向量
+function fetchItemVectors(callback) {
+    //查询系统中有多少不同的用户
+    pool.query('SELECT DISTINCT userID FROM UserItemInteractions ORDER BY userID', function(error, users) {
+        if (error) {
+            return callback(error, null);
+        }
+
+        //初始化用户索引映射
+        const userIndexMap = {};
+        users.forEach((user, index) => {
+            userIndexMap[user.userID] = index;
+        });
+
+        //查询所有商品的点击次数
+        var query = `SELECT Items.itemID, UserItemInteractions.userID, IFNULL(UserItemInteractions.ClickCount, 0) AS Clicks
+                     FROM Items
+                     LEFT JOIN UserItemInteractions ON Items.itemID = UserItemInteractions.itemID
+                     ORDER BY Items.itemID, UserItemInteractions.userID`;
+
+        pool.query(query, function(error, results) {
+            if (error) {
+                return callback(error, null);
+            }
+            var itemVectors = {};
+
+            //初始化向量，并用0填充
+            results.forEach(result => {
+                if (!itemVectors[result.itemID]) {
+                    itemVectors[result.itemID] = new Array(users.length).fill(0);
+                }
+                const index = userIndexMap[result.userID];
+                itemVectors[result.itemID][index] = result.Clicks;
+            });
+
+            console.log("Item Vectors: ", itemVectors);
+            callback(null, itemVectors);
+        });
+    });
+}
+function computeAndStoreItemSimilarities() {
+    fetchItemVectors((error, itemVectors) => {
+        if (error) {
+            console.error('Error fetching item vectors:', error);
+            return;
+        }
+        let itemIDs = Object.keys(itemVectors);
+        itemIDs.forEach((id1, index1) => {
+            for (let index2 = index1 + 1; index2 < itemIDs.length; index2++) {
+                const id2 = itemIDs[index2];
+                const similarity = cosineSimilarity(itemVectors[id1], itemVectors[id2]);
+                const sql = 'REPLACE INTO ItemSimilarity (item_id1, item_id2, similarity) VALUES (?, ?, ?)';
+                pool.query(sql, [id1, id2, similarity], (err, result) => {
+                    if (err) {
+                        console.error('Error updating similarity in DB:', err);
+                    }
+                });
+            }
+        });
+        console.log('相似度计算完成');
+    });
+}
+
+
+function scheduleSimilarityCalculation() {
+    // 立即执行一次相似度计算
+    computeAndStoreItemSimilarities();
+
+    schedule.scheduleJob('0 1 * * *', computeAndStoreItemSimilarities);
+    console.log("每日1点更新物品相似度");
+}
+
+module.exports = { scheduleSimilarityCalculation };

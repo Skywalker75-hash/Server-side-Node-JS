@@ -2,196 +2,164 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../dbPool');
 
-//计算两个向量之间的余弦相似度
-function cosineSimilarity(vec1, vec2) {
-    let x = 0, normA = 0, normB = 0;
-    for (let i = 0; i < vec1.length; i++) {
-        x += vec1[i] * vec2[i];//累加向量的对应元素的乘积，计算点积
-        normA += Math.pow(vec1[i], 2);
-        normB += Math.pow(vec2[i], 2);
-    }
-    return x / (Math.sqrt(normA) * Math.sqrt(normB));
+// 获取用户最感兴趣的三个商品
+function getTopThreeItems(userID, callback) {
+    const sql = `
+        SELECT itemID, SUM(ClickCount) AS TotalClicks
+        FROM UserItemInteractions
+        WHERE userID = ?
+        GROUP BY itemID
+        ORDER BY TotalClicks DESC
+        LIMIT 3;
+    `;
+    pool.query(sql, [userID], function(err, results) {
+        if (err) {
+            console.error("查询最感兴趣的三个商品时出错:", err);
+            return callback(err, null);
+        }
+        console.log("获取到的最感兴趣的三个商品:", results);
+        callback(null, results);
+    });
 }
-// 获取商品的向量
-function fetchItemVectors(callback) {
-    // 先查询系统中有多少不同的用户
-    pool.query('SELECT DISTINCT userID FROM UserItemInteractions ORDER BY userID', function(error, users) {
-        if (error) {
-            return callback(error, null);
+function computeRecommendations(topThreeItems, userID, callback) {
+    console.log("开始计算推荐...");
+    // 获取最喜欢的三个商品的ID
+    const topThreeItemIDs = topThreeItems.map(item => item.itemID);
+
+    pool.query('SELECT itemID FROM Items WHERE itemID NOT IN (?)', [topThreeItemIDs], (err, items) => {
+        if (err) {
+            console.error("查询商品列表时出错:", err);
+            return callback(err, null);
         }
 
-        // 初始化用户索引映射
-        const userIndexMap = {};
-        users.forEach((user, index) => {
-            userIndexMap[user.userID] = index;
+        console.log(`查询到的商品（排除了最感兴趣的三个），总计 ${items.length} 项。开始计算每个商品的推荐分数。`);
+        const itemPromises = items.map(item => {
+            return computeItemRecommendationScore(item.itemID, topThreeItems);
         });
 
-        // 准备查询所有商品的点击次数
-        var query = `SELECT Items.itemID, UserItemInteractions.userID, IFNULL(UserItemInteractions.ClickCount, 0) AS Clicks
-                     FROM Items
-                     LEFT JOIN UserItemInteractions ON Items.itemID = UserItemInteractions.itemID
-                     ORDER BY Items.itemID, UserItemInteractions.userID`;
+        Promise.all(itemPromises)
+            .then(recommendations => {
+                // 记录全部推荐数据，包括推荐指数为0的商品
+                console.log("推荐数据（包含推荐指数）:", recommendations);
 
-        pool.query(query, function(error, results) {
-            if (error) {
-                return callback(error, null);
-            }
-            var itemVectors = {};
+                // 对推荐结果进行排序（从高到低）
+                recommendations.sort((a, b) => b.value - a.value);
 
-            // 初始化向量，并用0填充
-            results.forEach(result => {
-                if (!itemVectors[result.itemID]) {
-                    itemVectors[result.itemID] = new Array(users.length).fill(0);
-                }
-                const index = userIndexMap[result.userID];
-                itemVectors[result.itemID][index] = result.Clicks;
+                // 过滤掉用户自己发布的商品，并提取商品ID
+                const filteredRecommendations = recommendations
+                    .filter(rec => rec.userID !== userID)
+                    .map(rec => rec.itemID);
+
+                // 将最喜欢的三个商品ID加到推荐列表前面
+                const finalRecommendations = topThreeItemIDs.concat(filteredRecommendations);
+
+                console.log("包含最喜欢的三个商品的排序后的最终推荐商品ID列表:", finalRecommendations);
+                callback(null, finalRecommendations);
+            })
+            .catch(error => {
+                console.error("计算推荐指数时出错:", error);
+                callback(error, null);
             });
-
-            console.log("Item Vectors: ", itemVectors);
-            callback(null, itemVectors);
-        });
     });
 }
 
-// 根据用户的历史互动推荐商品
-function fetchRecommendedItems(username, page, pageSize, callback) {
-    console.log(username);
-    console.log(page);
-    console.log(pageSize);
-    pool.query('SELECT userID FROM user WHERE userName = ?', [username], function(error, userResults) {
-        if (error || userResults.length === 0) {
-            console.log(error);
-            return callback(new Error('找不到该用户'));
-        }
-        const userID = userResults[0].userID;
 
-        // 尝试找出最后一条购买记录
-        pool.query('SELECT itemID FROM buyItems WHERE userID = ? ORDER BY buyID DESC LIMIT 1', [userID], function(error, buyResults) {
-            if (error) {
-                return callback(error);
-            }
-            if (buyResults.length > 0) {
-                // 如果用户有购买记录
-                recommendBasedOnItem(buyResults[0].itemID);
-            } else {
-                // 如果用户没有购买记录，使用点击最多的商品推荐
-                pool.query('SELECT itemID FROM UserItemInteractions WHERE userID = ? GROUP BY itemID ORDER BY COUNT(*) DESC LIMIT 1', [userID], function(error, interactionResults) {
-                    if (error || interactionResults.length === 0) {
-                        return fetchAllItems(userID,page, pageSize, callback); // 如果没有交互记录，推荐新用户逻辑
-                    }
-                    recommendBasedOnItem(interactionResults[0].itemID);
-                });
-            }
+function computeItemRecommendationScore(itemId, topItems) {
+    console.log(`开始计算商品 ${itemId} 的推荐分数。`);
+    return new Promise((resolve, reject) => {
+        let recommendationScore = 0;
+        const similarityPromises = topItems.map(topItem => {
+            return new Promise((innerResolve, innerReject) => {
+                pool.query('SELECT similarity FROM ItemSimilarity WHERE (item_id1 = ? AND item_id2 = ?) OR (item_id1 = ? AND item_id2 = ?)',
+                    [itemId, topItem.itemID, topItem.itemID, itemId], (err, similarities) => {
+                        if (err) {
+                            console.error(`查询商品 ${itemId} 与 ${topItem.itemID} 的相似度时出错:`, err);
+                            return innerReject(err);
+                        }
+                        if (similarities.length > 0) {
+                            const similarityScore = similarities[0].similarity;
+                            recommendationScore += similarityScore * topItem.TotalClicks;
+                            console.log(`商品 ${itemId} 与商品 ${topItem.itemID} 的相似度为 ${similarityScore}, 计算后的推荐分数: ${recommendationScore}`);
+                        }
+                        innerResolve();
+                    });
+            });
         });
-        //基于最喜欢的商品推荐与其相似的商品
-        function recommendBasedOnItem(favoriteItemID) {
-            fetchItemVectors(function(err, itemVectors) {
-                if (err) {
-                    console.log(err);
-                    return callback(err);
-                }
-                const favoriteVector = itemVectors[favoriteItemID];
-                var similarities = [];
-                var itemIDs = Object.keys(itemVectors);
 
-                itemIDs.forEach(itemID => {
-                    var currentItemVector = itemVectors[itemID];
-                    var similarity = cosineSimilarity(favoriteVector, currentItemVector);
-                    similarities.push({
-                        itemID: itemID,
-                        similarity: similarity
+        Promise.all(similarityPromises)
+            .then(() => {
+                console.log(`商品 ${itemId} 的最终推荐分数为 ${recommendationScore}`);
+                resolve({ itemID: itemId, value: recommendationScore });
+            })
+            .catch(error => {
+                console.error(`处理商品 ${itemId} 推荐分数时出错:`, error);
+                reject(error);
+            });
+    });
+}
+
+router.post('/', (req, res) => {
+    const { username, page = 1, pageSize = 10 } = req.body;
+    console.log(`接收到的请求数据：用户名-${username}, 页码-${page}, 每页大小-${pageSize}`);
+
+    pool.query('SELECT userID FROM user WHERE userName = ?', [username], (err, users) => {
+        if (err || users.length === 0) {
+            console.error("查找用户出错:", err);
+            return res.status(500).json({ success: false, message: "无法找到用户或数据库错误" });
+        }
+
+        const userID = users[0].userID;
+        getTopThreeItems(userID, (err, topItems) => {
+            if (err) {
+                return res.status(500).json({ success: false, message: "获取顶部商品失败" });
+            }
+
+            computeRecommendations(topItems, userID, (err, recommendedItemIDs) => {
+                if (err) {
+                    return res.status(500).json({ success: false, message: "计算推荐失败" });
+                }
+
+                // 生成用于排序的 FIELD() 语句
+                let fieldOrder = 'FIELD(Items.itemID, ' + recommendedItemIDs.join(',') + ')';
+
+                // 获取所有推荐商品的详细信息，包括userName，并按推荐顺序排序
+                pool.query(`
+                    SELECT Items.*, user.userName FROM Items
+                    JOIN user ON Items.userID = user.userID
+                    WHERE Items.itemID IN (?)
+                    ORDER BY ${fieldOrder}
+                `, [recommendedItemIDs], (err, items) => {
+                    if (err) {
+                        console.error("获取商品详细信息时出错:", err);
+                        return res.status(500).json({ success: false, message: "获取商品详情失败" });
+                    }
+
+                    // 应用分页逻辑
+                    const startIndex = (page - 1) * pageSize;
+                    const paginatedData = items.slice(startIndex, startIndex + pageSize).map(item => ({
+                        ItemID: item.ItemID,
+                        ItemName: item.ItemName,
+                        userName: item.userName,
+                        Category: item.Category,
+                        Price: item.Price,
+                        Image: item.Image ? `data:image/jpeg;base64,${Buffer.from(item.Image).toString('base64')}` : null
+                    }));
+
+                    res.json({
+                        success: true,
+                        data: paginatedData
                     });
                 });
-
-                console.log("排序前的相似度: ", similarities);  // 输出未排序的相似度结果
-                similarities.sort((a, b) => b.similarity - a.similarity);
-                console.log("排序完的相似度", similarities);  // 输出排序后的相似度结果
-
-                const sortedItemIDs = similarities.map(item => item.itemID); // 提取排序后的itemIDs
-                console.log("Sorted Item IDs for query: ", sortedItemIDs);  // 输出用于数据库查询的排序后的商品ID列表
-
-                const startIndex = (page - 1) * pageSize;
-                const endIndex = startIndex + pageSize;
-                const pagedSimilarItems = sortedItemIDs.slice(startIndex, endIndex);
-                console.log("Paged Similar Items: ", pagedSimilarItems);  // 输出分页后的商品ID列表
-
-                if (pagedSimilarItems.length === 0) {
-                    return callback(null, []);
-                }
-
-                const placeholders = pagedSimilarItems.map(() => '?').join(',');
-                const orderClause = `FIELD(ItemID, ${pagedSimilarItems.join(',')})`;  // 构造ORDER BY子句
-                const itemDetailsQuery = `SELECT Items.*, User.userName FROM Items JOIN User ON Items.userID = User.userID WHERE Items.ItemID IN (${placeholders}) AND Items.isSold = 0 AND Items.userID != ? ORDER BY ${orderClause}`;
-
-                pool.query(itemDetailsQuery, [...pagedSimilarItems, userID], function(error, detailedItems) {
-                    if (error) {
-                        console.log(error);
-                        return callback(new Error('查询商品详细信息失败'));
-                    }
-                    callback(null, detailedItems.map(processItem));
-                });
             });
-        }
-
-    });
-}
-// 新用户推荐逻辑：排除用户自己发布的商品
-function fetchAllItems(userID, page, pageSize, callback) {
-    const query = 'SELECT Items.*, User.userName FROM Items JOIN User ON Items.userID = User.userID AND Items.isSold = 0 AND Items.userID != ? ORDER BY Items.itemID DESC LIMIT ? OFFSET ?';
-    const offset = (page - 1) * pageSize;
-    pool.query(query, [userID, parseInt(pageSize), offset], function(err, items) {
-        if (err) {
-            console.log(err);
-            return callback(err);
-        }
-
-        // 处理每个商品项，将图片的二进制数据转换为Base64字符串
-        const processedItems = items.map(item => {
-            if (item.Image) {
-                // 假设图片存储为Buffer对象（二进制数据）
-                // 转换为Base64字符串
-                item.Image = Buffer.from(item.Image).toString('base64');
-                item.Image = `data:image/jpeg;base64,${item.Image}`; // 您可能需要根据实际图片格式调整MIME类型
-            }
-            return item;
-        });
-
-        return callback(null, processedItems);
-    });
-}
-
-// 处理每个商品项，将图片的二进制数据转换为Base64字符串
-function processItem(item) {
-    if (item.Image) {
-        // 假设图片存储为Buffer对象（二进制数据）
-        // 转换为Base64字符串
-        item.Image = Buffer.from(item.Image).toString('base64');
-        item.Image = `data:image/jpeg;base64,${item.Image}`; // 根据实际图片格式调整MIME类型
-    }
-    return item;
-}
-
-//主函数
-router.post('/', function(req, res) {
-    const { username, page, pageSize } = req.body;
-
-    if (!username || page == null || pageSize == null) {
-        return res.status(400).json({ success: false, message: '缺少必要的参数' });
-    }
-
-    fetchRecommendedItems(username, parseInt(page), parseInt(pageSize), function(err, recommendedItems) {
-        if (err) {
-            return res.status(500).json({ success: false, message: err.message });
-        }
-
-        res.json({
-            success: true,
-            message: '获取推荐商品成功',
-            data: recommendedItems
         });
     });
 });
 
+
 module.exports = router;
+
+
+
+
 
 

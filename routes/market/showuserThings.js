@@ -22,17 +22,20 @@ router.post('/', function(req, res) {
 
         const userID = results[0].userID;
 
-        // 使用userID查询Items表获取商品信息，并支持分页
+        // 使用userID查询Items表获取商品信息，并支持分页，包括点击次数
         const query = `
-            SELECT Items.ItemID, Items.ItemName, Items.Category, Items.Price, Items.Image, user.username AS userName 
+            SELECT Items.ItemID, Items.ItemName, Items.Category, Items.Price, Items.Image, user.username AS userName, IFNULL(SUM(UserItemInteractions.ClickCount), 0) AS ClickCount
             FROM Items 
             INNER JOIN user ON Items.userID = user.userID 
+            LEFT JOIN UserItemInteractions ON Items.ItemID = UserItemInteractions.itemID
             WHERE Items.userID = ? 
+            GROUP BY Items.ItemID
             ORDER BY Items.ItemID DESC 
             LIMIT ? OFFSET ?`;
 
         pool.query(query, [userID, parseInt(pageSize), offset], function(error, itemsResults) {
             if (error) {
+                console.log(error);
                 return res.status(500).json({ success: false, message: '查询Items表错误', error: error.message });
             }
 
@@ -46,7 +49,7 @@ router.post('/', function(req, res) {
 
             res.json({
                 success: true,
-                message: '分页加载物品及用户信息成功',
+                message: '分页加载物品及用户信息成功，包括点击次数',
                 data: processedResults
             });
         });

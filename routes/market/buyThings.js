@@ -25,15 +25,20 @@ router.post('/', function(req, res) {
 
         const { Price, userID: sellerID } = itemResults[0];
 
-        // 查询买家信息
-        const queryBuyer = 'SELECT user.userID, CampusCards.balance, CampusCards.accountID FROM user INNER JOIN CampusCards ON user.userID = CampusCards.userID WHERE user.username = ?';
+        // 查询买家信息，包括挂失状态
+        const queryBuyer = 'SELECT user.userID, CampusCards.balance, CampusCards.accountID, CampusCards.lostStatus FROM user INNER JOIN CampusCards ON user.userID = CampusCards.userID WHERE user.username = ?';
         pool.query(queryBuyer, [username], function(error, buyerResults) {
             if (error || buyerResults.length === 0) {
                 console.error(error);
                 return res.status(500).json({ success: false, message: '查询买家信息失败' });
             }
 
-            const { userID: buyerID, balance, accountID: buyerAccountID } = buyerResults[0];
+            const { userID: buyerID, balance, accountID: buyerAccountID, lostStatus } = buyerResults[0];
+
+            // 检查校园卡是否挂失
+            if (lostStatus === 1) {
+                return res.status(403).json({ success: false, message: '校园卡处于挂失状态，无法进行交易' });
+            }
 
             // 确保买家不是卖家
             if (buyerID === sellerID) {
@@ -61,28 +66,19 @@ router.post('/', function(req, res) {
                         return res.status(500).json({ success: false, message: '更新卖家余额失败' });
                     }
 
-                    // 添加购买记录
-                    const insertBuyRecord = 'INSERT INTO buyItems (userID, itemID) VALUES (?, ?)';
-                    pool.query(insertBuyRecord, [buyerID, itemID], function(error) {
+                    // 删除商品记录
+                    const deleteItem = 'DELETE FROM Items WHERE ItemID = ?';
+                    pool.query(deleteItem, [itemID], function(error) {
                         if (error) {
                             console.error(error);
-                            return res.status(500).json({ success: false, message: '添加购买记录失败' });
+                            return res.status(500).json({ success: false, message: '删除商品记录失败' });
                         }
 
-                        // 更新商品为已售出状态，而非删除
-                        const markItemAsSold = 'UPDATE Items SET isSold = TRUE WHERE ItemID = ?';
-                        pool.query(markItemAsSold, [itemID], function(error) {
-                            if (error) {
-                                console.error(error);
-                                return res.status(500).json({ success: false, message: '标记商品为已售出失败' });
-                            }
-
-                            // 继续执行后续的购买成功逻辑
-                            res.json({ success: true, message: '购买成功，余额已更新' });
-                        });
-
+                        // 继续执行后续的购买成功逻辑
+                        res.json({ success: true, message: '购买成功，商品已删除，余额已更新' });
                     });
                 });
+
             });
         });
     });
