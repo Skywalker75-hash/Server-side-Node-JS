@@ -50,6 +50,10 @@ var releasePhoneRouter = require('./routes/declareloss/releasePhone');//上传�
 var removeLossRouter = require('./routes/declareloss/removeLoss');//删除挂失
 var showuserLossRouter = require('./routes/declareloss/showuserLoss');//展示自己挂失的物品
 
+var mloginRouter = require('./routes/manager/mlogin');//管理员登录
+var mdeletecourseRouter = require('./routes/manager/mdeletecourse');//管理员删除课程
+var addcourseRouter = require('./routes/manager/addcourse');//管理员添加课程
+
 // 使用路由中间件，为应用定义路由
 app.use('/login', loginRouter);
 app.use('/register',registerRouter);
@@ -76,7 +80,9 @@ app.use('/removeLoss',removeLossRouter);
 app.use('/showuserLoss',showuserLossRouter);
 app.use('/registercard',registercardRouter);
 app.use('/deleteCourse',deleteCourseRouter);
-
+app.use('/mdeletecourse',mdeletecourseRouter);
+app.use('/addcourse',addcourseRouter);
+app.use('/mlogin',mloginRouter);
 
 
 // 错误处理

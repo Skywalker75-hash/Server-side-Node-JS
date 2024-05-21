@@ -51,7 +51,7 @@ function checkCourseSelection(userId, courseCodes, res) {
 
 function checkForTimeConflicts(userId, coursesDetails, res) {
 
-    // 首先检查新选课程间是否有冲突
+    //首先检查新选课程间是否有冲突
     for (let i = 0; i < coursesDetails.length; i++) {
         for (let j = i + 1; j < coursesDetails.length; j++) {
             const classTime1 = parseClassTime(coursesDetails[i].classTime);
@@ -62,7 +62,7 @@ function checkForTimeConflicts(userId, coursesDetails, res) {
         }
     }
 
-    // 然后检查新选课程与已选课程之间是否有冲突
+    //然后检查新选课程与已选课程之间是否有冲突
     pool.query('SELECT Courses.CourseID, Courses.ClassTime FROM Enrollments JOIN Courses ON Enrollments.CourseID = Courses.CourseID WHERE Enrollments.UserId = ?', [userId], function(error, enrolledCourses) {
         if (error) {
             return res.status(500).json({ success: false, message: '查询enrollments表错误' });
@@ -74,12 +74,12 @@ function checkForTimeConflicts(userId, coursesDetails, res) {
             for (let courseDetail of coursesDetails) {
                 const courseClassTime = parseClassTime(courseDetail.classTime);
                 if (checkTimeConflict(enrolledClassTime, courseClassTime)) {
-                    return res.json({ success: false, message: '选课时间冲突' });
+                    return res.json({ success: false, message: '新老课程冲突' });
                 }
             }
         }
 
-        // 如果没有时间冲突，执行选课逻辑
+        //如果没有时间冲突，执行选课逻辑
         enrollCourses(userId, coursesDetails, res);
     });
 }
@@ -123,6 +123,7 @@ function parseClassTime(classTimeStr) {
             classTimes.push({ day: dayOfWeek, periods: periods });
         }
     });
+    console.log(classTimes);
     return classTimes;
 }
 

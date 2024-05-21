@@ -1,6 +1,6 @@
 const schedule = require('node-schedule');
 const pool = require('../dbPool');  // 假设这是你的数据库连接池模块
-
+//计算余弦相似度
 function cosineSimilarity(vec1, vec2) {
     let dotProduct = 0, normA = 0, normB = 0;
     for (let i = 0; i < vec1.length; i++) {
@@ -8,7 +8,7 @@ function cosineSimilarity(vec1, vec2) {
         normA += vec1[i] * vec1[i];
         normB += vec2[i] * vec2[i];
     }
-    // 防止除以零的情况发生，引起 NaN
+    //防止除以零的情况发生
     if (normA === 0 || normB === 0) return 0;
     return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
 }
@@ -20,13 +20,11 @@ function fetchItemVectors(callback) {
         if (error) {
             return callback(error, null);
         }
-
         //初始化用户索引映射
         const userIndexMap = {};
         users.forEach((user, index) => {
             userIndexMap[user.userID] = index;
         });
-
         //查询所有商品的点击次数
         var query = `SELECT Items.itemID, UserItemInteractions.userID, IFNULL(UserItemInteractions.ClickCount, 0) AS Clicks
                      FROM Items
@@ -38,7 +36,6 @@ function fetchItemVectors(callback) {
                 return callback(error, null);
             }
             var itemVectors = {};
-
             //初始化向量，并用0填充
             results.forEach(result => {
                 if (!itemVectors[result.itemID]) {
@@ -47,16 +44,16 @@ function fetchItemVectors(callback) {
                 const index = userIndexMap[result.userID];
                 itemVectors[result.itemID][index] = result.Clicks;
             });
-
-            console.log("Item Vectors: ", itemVectors);
+            console.log("物品向量 ", itemVectors);
             callback(null, itemVectors);
         });
     });
 }
-function computeAndStoreItemSimilarities() {
+//计算所有相似度并存入数据库
+function computeStoreItemSimilarities() {
     fetchItemVectors((error, itemVectors) => {
         if (error) {
-            console.error('Error fetching item vectors:', error);
+            console.error('未能成功获取余弦相似度：', error);
             return;
         }
         let itemIDs = Object.keys(itemVectors);
@@ -67,7 +64,7 @@ function computeAndStoreItemSimilarities() {
                 const sql = 'REPLACE INTO ItemSimilarity (item_id1, item_id2, similarity) VALUES (?, ?, ?)';
                 pool.query(sql, [id1, id2, similarity], (err, result) => {
                     if (err) {
-                        console.error('Error updating similarity in DB:', err);
+                        console.error('未能成功上传到数据库：', err);
                     }
                 });
             }
@@ -78,10 +75,10 @@ function computeAndStoreItemSimilarities() {
 
 
 function scheduleSimilarityCalculation() {
-    // 立即执行一次相似度计算
-    computeAndStoreItemSimilarities();
-
-    schedule.scheduleJob('0 1 * * *', computeAndStoreItemSimilarities);
+    //服务器开机执行一次相似度计算
+    computeStoreItemSimilarities();
+    //每天凌晨1点执行一次相似度计算
+    schedule.scheduleJob('0 1 * * *', computeStoreItemSimilarities);
     console.log("每日1点更新物品相似度");
 }
 

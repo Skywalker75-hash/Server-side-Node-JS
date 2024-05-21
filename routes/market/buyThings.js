@@ -66,19 +66,27 @@ router.post('/', function(req, res) {
                         return res.status(500).json({ success: false, message: '更新卖家余额失败' });
                     }
 
-                    // 删除商品记录
-                    const deleteItem = 'DELETE FROM Items WHERE ItemID = ?';
-                    pool.query(deleteItem, [itemID], function(error) {
+                    // 删除 itemsimilarity 表中与该商品相关的记录
+                    const deleteItemSimilarity = 'DELETE FROM ItemSimilarity WHERE item_id1 = ? OR item_id2 = ?';
+                    pool.query(deleteItemSimilarity, [itemID, itemID], function(error) {
                         if (error) {
                             console.error(error);
-                            return res.status(500).json({ success: false, message: '删除商品记录失败' });
+                            return res.status(500).json({ success: false, message: '删除商品相似度记录失败' });
                         }
 
-                        // 继续执行后续的购买成功逻辑
-                        res.json({ success: true, message: '购买成功，商品已删除，余额已更新' });
+                        // 删除商品记录
+                        const deleteItem = 'DELETE FROM Items WHERE ItemID = ?';
+                        pool.query(deleteItem, [itemID], function(error) {
+                            if (error) {
+                                console.error(error);
+                                return res.status(500).json({ success: false, message: '删除商品记录失败' });
+                            }
+
+                            // 继续执行后续的购买成功逻辑
+                            res.json({ success: true, message: '购买成功，商品已删除，余额已更新' });
+                        });
                     });
                 });
-
             });
         });
     });
